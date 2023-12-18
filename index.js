@@ -2,6 +2,8 @@ const express = require("express");
 const app = express();
 const PORT = 8000;
 
+app.use(express.json());
+
 const fs = require("fs");
 
 const Joi = require("joi");
@@ -11,67 +13,76 @@ const getAllMeals = () => {
   return allMeals;
 };
 
-app.get("/", (req, res) => {
+const newMealSchema = Joi.object({
+  mealId: Joi.number().integer().min(12),
+  name: Joi.string().required(),
+  description: Joi.string().required(),
+  ingredients: Joi.array().items(Joi.string()).required(),
+  instructions: Joi.array().items(Joi.string()).required(),
+  image: Joi.string(),
+  nutrition: Joi.object({
+    calories: Joi.number().integer(),
+    protein: Joi.number().integer(),
+    fat: Joi.number().integer(),
+    carbohydrates: Joi.number().integer(),
+    fiber: Joi.number().integer(),
+    sugar: Joi.number().integer(),
+    sodium: Joi.number().integer(),
+  }),
+})
+  .with("name", "description")
+  .with("ingredients", "instructions")
+  .with("image", "nutrition");
+
+app.get("/meals", (req, res) => {
   const allMeals = getAllMeals();
   res.status(200).send(allMeals);
 });
 
-app.get("/:mealId", (req, res) => {
+app.get("/meals/:mealId", (req, res) => {
   const requestedMealId = parseInt(req.params.mealId);
   const allMeals = getAllMeals();
+
+  if (isNaN(requestedMealId)) {
+    return res.status(404).send("Invalid, Meal ID must be a Number!");
+  }
+
+  if (requestedMealId <= 0) {
+    return res.status(404).send("Enter a Meal ID greater than 0!");
+  }
+
   const requestedMeal = allMeals.find((meal) => {
     return meal.mealId === requestedMealId;
   });
+
   if (!requestedMeal) {
     return res.status(404).send("Meal Not Found");
   }
   res.status(200).send(requestedMeal);
 });
 
-app.post("/", (req, res) => {
+app.post("/meals", (req, res) => {
   try {
-    const allMeals = getAllMeals();
-    const name = req.query.name;
-    const description = req.query.description;
-    const ingredients = JSON.parse(req.query.ingredients);
-    const image = req.query.image;
-    const instructions = JSON.parse(req.query.instructions);
-    const nutrition = JSON.parse(req.query.nutrition);
+    const { error, value } = newMealSchema.validate(req.body, {
+      abortEarly: false,
+    });
 
-    if (!name || !description || !ingredients || !instructions) {
-      return res.send("Invalid meal object provided.");
+    if (error) {
+      console.log(error);
+      return res.send(error.details);
     }
+
+    const allMeals = getAllMeals();
 
     const newMeal = {
       mealId: allMeals.length + 1,
-      name: name,
-      description: description,
-      ingredients: ingredients,
-      instructions: instructions,
-      image: image,
-      nutrition: nutrition,
+      name: value.name,
+      description: value.description,
+      ingredients: value.ingredients,
+      instructions: value.instructions,
+      image: value.image,
+      nutrition: value.nutrition,
     };
-
-    Joi.object({
-      mealId: Joi.number().integer().min(12),
-      name: Joi.string().required(),
-      description: Joi.string().required(),
-      ingredients: Joi.array().items(Joi.string()).required(),
-      instructions: Joi.array().items(Joi.string()).required(),
-      image: Joi.string(),
-      nutrition: Joi.object({
-        calories: Joi.number().integer(),
-        protein: Joi.number().integer(),
-        fat: Joi.number().integer(),
-        carbohydrates: Joi.number().integer(),
-        fiber: Joi.number().integer(),
-        sugar: Joi.number().integer(),
-        sodium: Joi.number().integer(),
-      }),
-    })
-      .with("name", "description")
-      .with("ingredients", "instructions")
-      .with("image", "nutrition");
 
     allMeals.push(newMeal);
 
@@ -85,7 +96,7 @@ app.post("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Listening on port ${PORT}`);
+  console.log(`app listening on port ${PORT}`);
 });
 
 /* 
