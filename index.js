@@ -40,19 +40,21 @@ app.get("/meals", (req, res) => {
 });
 
 app.get("/meals/:mealId", (req, res) => {
-  const requestedMealId = parseInt(req.params.mealId);
-  const allMeals = getAllMeals();
+  const requestedMealId = req.params.mealId;
 
-  if (isNaN(requestedMealId)) {
-    return res.status(404).send("Invalid, Meal ID must be a Number!");
+  if (!/^\d+$/.test(requestedMealId)) {
+    return res.status(404).send("Invalid Meal ID. Must contain only numbers.");
   }
+  const parsedRequestedMealId = parseInt(requestedMealId);
 
-  if (requestedMealId <= 0) {
+  if (parsedRequestedMealId <= 0) {
     return res.status(404).send("Enter a Meal ID greater than 0!");
   }
 
+  const allMeals = getAllMeals();
+
   const requestedMeal = allMeals.find((meal) => {
-    return meal.mealId === requestedMealId;
+    return meal.mealId === parsedRequestedMealId;
   });
 
   if (!requestedMeal) {
