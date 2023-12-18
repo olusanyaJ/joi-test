@@ -11,24 +11,34 @@ const getAllMeals = () => {
   return allMeals;
 };
 
-app.get("/", (req, res) => {
+app.get("/meals", (req, res) => {
   const allMeals = getAllMeals();
   res.status(200).send(allMeals);
 });
 
-app.get("/:mealId", (req, res) => {
+app.get("/meals/:mealId", (req, res) => {
   const requestedMealId = parseInt(req.params.mealId);
   const allMeals = getAllMeals();
+
+  if (isNaN(requestedMealId)) {
+    return res.status(404).send("Invalid, Meal ID must be a Number!");
+  }
+
+  if (requestedMealId <= 0) {
+    return res.status(404).send("Enter a Meal ID greater than 0!");
+  }
+
   const requestedMeal = allMeals.find((meal) => {
     return meal.mealId === requestedMealId;
   });
+
   if (!requestedMeal) {
     return res.status(404).send("Meal Not Found");
   }
   res.status(200).send(requestedMeal);
 });
 
-app.post("/", (req, res) => {
+app.post("/meals", (req, res) => {
   try {
     const allMeals = getAllMeals();
     const name = req.query.name;
@@ -85,7 +95,7 @@ app.post("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Listening on port ${PORT}`);
+  console.log(`app listening on port ${PORT}`);
 });
 
 /* 
