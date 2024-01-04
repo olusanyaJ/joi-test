@@ -9,8 +9,12 @@ const fs = require("fs");
 const Joi = require("joi");
 
 const getAllMeals = () => {
-  const allMeals = JSON.parse(fs.readFileSync("./data/meals.json"));
-  return allMeals;
+  try {
+    const allMeals = JSON.parse(fs.readFileSync("./data/meals.json"));
+    return { status: "success", data: allMeals };
+  } catch (error) {
+    return { status: "error", message: "Error reading meals data" };
+  }
 };
 
 const newMealSchema = Joi.object({
@@ -36,31 +40,55 @@ const newMealSchema = Joi.object({
 
 app.get("/meals", (req, res) => {
   const allMeals = getAllMeals();
-  res.status(200).send(allMeals);
+  if (allMeals.status === "success") {
+    res.status(200).json(allMeals);
+  } else if (allMeals.status === "fail") {
+    res.status(404).json(allMeals);
+  } else {
+    res.status(500).json(allMeals);
+  }
 });
 
 app.get("/meals/:mealId", (req, res) => {
   const requestedMealId = req.params.mealId;
 
   if (!/^\d+$/.test(requestedMealId)) {
-    return res.status(404).send("Invalid Meal ID. Must contain only numbers.");
+    return res.status(404).json({
+      status: "fail",
+      message: "Invalid input, Meal ID must contain only numbers.",
+    });
   }
+
   const parsedRequestedMealId = parseInt(requestedMealId);
 
-  if (parsedRequestedMealId <= 0) {
-    return res.status(404).send("Enter a Meal ID greater than 0!");
+  if (isNaN(parsedRequestedMealId) || parsedRequestedMealId <= 0) {
+    return res.status(404).json({
+      status: "fail",
+      message:
+        "Invalid meal ID. Please provide a valid meal ID greater than 0.",
+    });
   }
 
   const allMeals = getAllMeals();
 
-  const requestedMeal = allMeals.find((meal) => {
+  if (allMeals.status === "error") {
+    return res.status(500).json({
+      status: "error",
+      message: "Error retrieving meals data.",
+    });
+  }
+
+  const requestedMeal = allMeals.data.find((meal) => {
     return meal.mealId === parsedRequestedMealId;
   });
 
   if (!requestedMeal) {
-    return res.status(404).send("Meal Not Found");
+    return res.status(404).json({
+      status: "error",
+      message: "Meal Not Found.",
+    });
   }
-  res.status(200).send(requestedMeal);
+  res.status(200).json({ status: "success", data: requestedMeal });
 });
 
 app.post("/meals", (req, res) => {
@@ -70,14 +98,40 @@ app.post("/meals", (req, res) => {
     });
 
     if (error) {
-      console.log(error);
-      return res.send(error.details);
+      const errorMessages = error.details.map(
+        (errorDetail) => errorDetail.message
+      );
+
+      return res.status(400).json({
+        status: "fail",
+        message: "Invalid input. Please check the provided data.",
+        errors: errorMessages,
+      });
     }
 
     const allMeals = getAllMeals();
+    if (allMeals.status === "error") {
+      return res.status(500).json({
+        status: "error",
+        message: "Error retrieving meals data.",
+      });
+    }
+
+    /*
+     * I used the every method to check if the provided name is unique among existing meals.
+     */
+    const isMealNameUnique = allMeals.data.every(
+      (meal) => meal.name !== value.name
+    );
+    if (!isMealNameUnique) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Invalid input. A Meal with this name already exist",
+      });
+    }
 
     const newMeal = {
-      mealId: allMeals.length + 1,
+      mealId: allMeals.data.length + 1,
       name: value.name,
       description: value.description,
       ingredients: value.ingredients,
@@ -86,14 +140,17 @@ app.post("/meals", (req, res) => {
       nutrition: value.nutrition,
     };
 
-    allMeals.push(newMeal);
+    allMeals.data.push(newMeal);
 
-    const stringifedMeal = JSON.stringify(allMeals);
+    const stringifedMeal = JSON.stringify(allMeals.data);
     fs.writeFileSync("./data/meals.json", stringifedMeal);
-    res.status(200).send(allMeals);
+    res.status(200).json({ status: "success", data: allMeals });
   } catch (error) {
     console.error("Error processing the request:", error);
-    res.status(500).send("Internal Server Error");
+    return res.status(500).json({
+      status: "error",
+      message: "Internal Server Error.",
+    });
   }
 });
 
