@@ -88,11 +88,20 @@ app.post("/meals", (req, res) => {
     });
 
     if (error) {
-      console.log(error);
-      return res.send(error.details);
+      return res.status(400).json({
+        status: "fail",
+        message: "Invalid input. Please check the provided data.",
+        errors: error.details,
+      });
     }
 
     const allMeals = getAllMeals();
+    if (allMeals.status === "error") {
+      return res.status(500).json({
+        status: "error",
+        message: "Error retrieving meals data.",
+      });
+    }
 
     const newMeal = {
       mealId: allMeals.length + 1,
@@ -104,14 +113,17 @@ app.post("/meals", (req, res) => {
       nutrition: value.nutrition,
     };
 
-    allMeals.push(newMeal);
+    allMeals.data.push(newMeal);
 
     const stringifedMeal = JSON.stringify(allMeals);
     fs.writeFileSync("./data/meals.json", stringifedMeal);
-    res.status(200).send(allMeals);
+    res.status(200).json({ status: "success", data: allMeals });
   } catch (error) {
     console.error("Error processing the request:", error);
-    res.status(500).send("Internal Server Error");
+    return res.status(500).json({
+      status: "error",
+      message: "Internal Server Error.",
+    });
   }
 });
 
