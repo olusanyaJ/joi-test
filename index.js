@@ -50,16 +50,26 @@ app.get("/meals", (req, res) => {
 });
 
 app.get("/meals/:mealId", (req, res) => {
-  const requestedMealId = parseInt(req.params.mealId);
-  const allMeals = getAllMeals();
+  const requestedMealId = req.params.mealId;
 
-  if (isNaN(requestedMealId) || requestedMealId <= 0) {
+  if (!/^\d+$/.test(requestedMealId)) {
+    return res.status(404).json({
+      status: "fail",
+      message: "Invalid input, Meal ID must contain only numbers.",
+    });
+  }
+
+  const parsedRequestedMealId = parseInt(requestedMealId);
+
+  if (isNaN(parsedRequestedMealId) || parsedRequestedMealId <= 0) {
     return res.status(404).json({
       status: "fail",
       message:
         "Invalid meal ID. Please provide a valid meal ID greater than 0.",
     });
   }
+
+  const allMeals = getAllMeals();
 
   if (allMeals.status === "error") {
     return res.status(500).json({
@@ -69,7 +79,7 @@ app.get("/meals/:mealId", (req, res) => {
   }
 
   const requestedMeal = allMeals.data.find((meal) => {
-    return meal.mealId === requestedMealId;
+    return meal.mealId === parsedRequestedMealId;
   });
 
   if (!requestedMeal) {
@@ -88,10 +98,14 @@ app.post("/meals", (req, res) => {
     });
 
     if (error) {
+      const errorMessages = error.details.map(
+        (errorDetail) => errorDetail.message
+      );
+
       return res.status(400).json({
         status: "fail",
         message: "Invalid input. Please check the provided data.",
-        errors: error.details,
+        errors: errorMessages,
       });
     }
 
