@@ -9,8 +9,12 @@ const fs = require("fs");
 const Joi = require("joi");
 
 const getAllMeals = () => {
-  const allMeals = JSON.parse(fs.readFileSync("./data/meals.json"));
-  return allMeals;
+  try {
+    const allMeals = JSON.parse(fs.readFileSync("./data/meals.json"));
+    return { status: "success", data: allMeals };
+  } catch (error) {
+    return { status: "error", message: "Error reading meals data" };
+  }
 };
 
 const newMealSchema = Joi.object({
@@ -36,7 +40,13 @@ const newMealSchema = Joi.object({
 
 app.get("/meals", (req, res) => {
   const allMeals = getAllMeals();
-  res.status(200).send(allMeals);
+  if (allMeals.status === "success") {
+    res.status(200).send(allMeals);
+  } else if (allMeals.status === "fail") {
+    res.status(404).send(allMeals);
+  } else {
+    res.status(500).send(allMeals);
+  }
 });
 
 app.get("/meals/:mealId", (req, res) => {
