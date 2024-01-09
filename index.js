@@ -117,13 +117,11 @@ app.post("/meals", (req, res) => {
       });
     }
 
-    /*
-     * I used the every method to check if the provided name is unique among existing meals.
-     */
-    const isMealNameUnique = allMeals.data.every(
-      (meal) => meal.name !== value.name
+    const isMealNameUnique = allMeals.data.some(
+      (meal) => meal.name === value.name
     );
-    if (!isMealNameUnique) {
+
+    if (isMealNameUnique) {
       return res.status(400).json({
         status: "fail",
         message: "Invalid input. A Meal with this name already exist",
